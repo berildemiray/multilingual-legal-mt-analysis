@@ -1,0 +1,55 @@
+"""Combine and summarize legal machine translation failure datasets.
+
+Run from the repository root:
+    python src/analyze_failures.py
+"""
+
+from pathlib import Path
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = ROOT / "data" / "raw"
+RESULTS_DIR = ROOT / "results"
+
+FILES = {
+    "CISG": DATA_DIR / "CISG.xlsx",
+    "ECHR": DATA_DIR / "ECHR.xlsx",
+    "GDPR": DATA_DIR / "GDPR.xlsx",
+}
+
+
+def load_dataset() -> pd.DataFrame:
+    frames = []
+    for document, path in FILES.items():
+        if not path.exists():
+            raise FileNotFoundError(f"Missing file: {path}")
+        df = pd.read_excel(path, sheet_name=document)
+        df.insert(0, "Document", document)
+        frames.append(df)
+    return pd.concat(frames, ignore_index=True)
+
+
+def main() -> None:
+    RESULTS_DIR.mkdir(exist_ok=True)
+    combined = load_dataset()
+    combined.to_csv(RESULTS_DIR / "combined_failure_dataset.csv", index=False)
+
+    summary_columns = [
+        "Document",
+        "Location",
+        "Source",
+        "Failure",
+        "Failure Explanation",
+        "Failure.1",
+        "Failure Explanation.1",
+    ]
+    combined[summary_columns].to_csv(RESULTS_DIR / "failure_summary.csv", index=False)
+
+    print("Dataset combined successfully.")
+    print(f"Rows: {len(combined)}")
+    print("Rows per document:")
+    print(combined["Document"].value_counts())
+
+
+if __name__ == "__main__":
+    main()
